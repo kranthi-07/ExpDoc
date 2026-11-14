@@ -46,7 +46,7 @@ function LocationProvider() {
 function App() {
   return (
     <BrowserRouter>
-      <div className="relative min-h-screen bg-[#f8fafc] dark:bg-[#030712] text-slate-900 dark:text-zinc-100 font-sans flex flex-col selection:bg-indigo-500/30 transition-colors duration-300 overflow-x-hidden">
+      <div className="relative min-h-screen bg-[#f8fafc] dark:bg-[#030712] text-slate-900 dark:text-zinc-100 font-sans flex flex-col selection:bg-indigo-500/30 transition-colors duration-300 overflow-x-clip">
         
         {/* Futuristic Ambient Aurora Gradients */}
         <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">

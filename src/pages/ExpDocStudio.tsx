@@ -40,7 +40,9 @@ import {
   Outdent,
   Calendar,
   Replace,
-  Stamp
+  Stamp,
+  Copy,
+  ClipboardPaste
 } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import DownloadModal from '../components/DownloadModal';
@@ -166,10 +168,13 @@ export default function ExpDocStudio() {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [pendingTemplateId, setPendingTemplateId] = useState<string | null>(null);
   const [confirmTemplateOpen, setConfirmTemplateOpen] = useState(false);
-  const [pageToDelete, setPageToDelete] = useState<number | null>(null);
-  const [confirmDeletePageOpen, setConfirmDeletePageOpen] = useState(false);
   const [imageModalOpen, setImageModalOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState('');
+
+  // Document History Stack for Undo/Redo & Selected Page
+  const [history, setHistory] = useState<string[][]>([[TEMPLATES[1].pages[0]]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const [selectedPageIndex, setSelectedPageIndex] = useState<number>(0);
   
   // Advanced Features State
   const [isScrolled, setIsScrolled] = useState(false);
@@ -718,16 +723,167 @@ export default function ExpDocStudio() {
   };
 
   // =========================================================
-  // PAGE MANAGEMENT: ADD PAGE, DELETE PAGE, INSERT PAGE BREAK
+  // HISTORY & CLIPBOARD ENGINE (UNDO, REDO, COPY, CUT, PASTE)
+  // =========================================================
+
+  // Push snapshot to undo history
+  const pushHistorySnapshot = useCallback((newPages: string[]) => {
+    setHistory(prev => {
+      const upToCurrent = prev.slice(0, historyIndex + 1);
+      return [...upToCurrent, newPages].slice(-30);
+    });
+    setHistoryIndex(prev => Math.min(prev + 1, 29));
+  }, [historyIndex]);
+
+  // Undo function
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      const targetIndex = historyIndex - 1;
+      const targetPages = history[targetIndex];
+      setHistoryIndex(targetIndex);
+      setPages(targetPages);
+      setTimeout(() => {
+        targetPages.forEach((content, idx) => {
+          if (pageRefs.current[idx]) {
+            pageRefs.current[idx]!.innerHTML = content;
+          }
+        });
+        updateMetrics();
+      }, 30);
+      toast.info('Undo');
+    } else {
+      document.execCommand('undo');
+      updateMetrics();
+    }
+  }, [historyIndex, history, updateMetrics]);
+
+  // Redo function
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      const targetIndex = historyIndex + 1;
+      const targetPages = history[targetIndex];
+      setHistoryIndex(targetIndex);
+      setPages(targetPages);
+      setTimeout(() => {
+        targetPages.forEach((content, idx) => {
+          if (pageRefs.current[idx]) {
+            pageRefs.current[idx]!.innerHTML = content;
+          }
+        });
+        updateMetrics();
+      }, 30);
+      toast.info('Redo');
+    } else {
+      document.execCommand('redo');
+      updateMetrics();
+    }
+  }, [historyIndex, history, updateMetrics]);
+
+  // Copy selection or active page
+  const handleCopy = useCallback(async () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      try {
+        await navigator.clipboard.writeText(selection.toString());
+        toast.success('Copied selection to clipboard!');
+      } catch {
+        document.execCommand('copy');
+        toast.success('Copied to clipboard!');
+      }
+    } else {
+      const activeEl = pageRefs.current[activePageRef.current];
+      if (activeEl) {
+        try {
+          await navigator.clipboard.writeText(activeEl.innerText || '');
+          toast.success(`Copied Page ${activePageRef.current + 1} content to clipboard!`);
+        } catch {
+          toast.info('Select text to copy.');
+        }
+      }
+    }
+  }, []);
+
+  // Cut selection or active page
+  const handleCut = useCallback(async () => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      try {
+        await navigator.clipboard.writeText(selection.toString());
+        document.execCommand('delete');
+        syncPageContents();
+        toast.success('Cut selection to clipboard!');
+      } catch {
+        document.execCommand('cut');
+        toast.success('Cut to clipboard!');
+      }
+    } else {
+      if (pages.length > 1) {
+        const activeIdx = activePageRef.current;
+        const activeEl = pageRefs.current[activeIdx];
+        if (activeEl) {
+          try {
+            await navigator.clipboard.writeText(activeEl.innerText || '');
+          } catch {}
+        }
+        deletePageDirect(activeIdx);
+        toast.success(`Cut Page ${activeIdx + 1} to clipboard!`);
+      } else {
+        const activeEl = pageRefs.current[0];
+        if (activeEl) {
+          try {
+            await navigator.clipboard.writeText(activeEl.innerText || '');
+          } catch {}
+          activeEl.innerHTML = '<p><br></p>';
+          syncPageContents();
+          toast.success('Cut page content to clipboard!');
+        }
+      }
+    }
+    updateMetrics();
+  }, [pages.length, syncPageContents, updateMetrics]);
+
+  // Paste from Toolbar
+  const handlePasteFromToolbar = useCallback(async () => {
+    try {
+      if (navigator.clipboard.read) {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const imageType = item.types.find(t => t.startsWith('image/'));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const file = new File([blob], 'clipboard-pasted.png', { type: imageType });
+            await insertImageFile(file);
+            toast.success('Pasted image into document!');
+            return;
+          }
+        }
+      }
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        const blocks = parseBlocksFromPlainText(text);
+        distributeBlocksAcrossPages(blocks, activePageRef.current);
+      }
+    } catch {
+      toast.info('Press Ctrl+V to paste directly into your active page.');
+    }
+  }, [insertImageFile]);
+
+  // =========================================================
+  // PAGE MANAGEMENT: ADD PAGE, DELETE PAGE (NO POPUP), BREAK
   // =========================================================
 
   // 1. Add a new A4 page sheet
   const handleAddNewPage = () => {
     syncPageContents();
-    setPages(prev => [...prev, '<p><br></p>']);
+    setPages(prev => {
+      const next = [...prev, '<p><br></p>'];
+      pushHistorySnapshot(next);
+      return next;
+    });
     setTimeout(() => {
       const newIndex = pages.length;
       activePageRef.current = newIndex;
+      setSelectedPageIndex(newIndex);
       if (pageRefs.current[newIndex]) {
         pageRefs.current[newIndex]?.focus();
       }
@@ -736,26 +892,79 @@ export default function ExpDocStudio() {
     toast.success(`Page ${pages.length + 1} created!`);
   };
 
-  // 2. Request Delete Page with Custom Popup
-  const requestDeletePage = (index: number) => {
+  // 2. Direct Delete Page (NO POPUP - INSTANT DELETION)
+  const deletePageDirect = useCallback((index: number) => {
     if (pages.length <= 1) {
       toast.error('Document must contain at least one page.');
       return;
     }
-    setPageToDelete(index);
-    setConfirmDeletePageOpen(true);
-  };
+    const nextPages = pages.filter((_, i) => i !== index);
+    setPages(nextPages);
+    pushHistorySnapshot(nextPages);
 
-  // 2b. Execute Delete Page
-  const executeDeletePage = () => {
-    if (pageToDelete === null || pages.length <= 1) return;
-    const target = pageToDelete;
-    syncPageContents();
-    setPages(prev => prev.filter((_, i) => i !== target));
-    setPageToDelete(null);
-    toast.success(`Page ${target + 1} removed.`);
-    setTimeout(updateMetrics, 50);
-  };
+    const nextActive = Math.max(0, Math.min(index, nextPages.length - 1));
+    activePageRef.current = nextActive;
+    setSelectedPageIndex(nextActive);
+
+    toast.success(`Page ${index + 1} deleted.`);
+    setTimeout(() => {
+      nextPages.forEach((content, i) => {
+        if (pageRefs.current[i]) {
+          pageRefs.current[i]!.innerHTML = content;
+        }
+      });
+      updateMetrics();
+      pageRefs.current[nextActive]?.focus();
+    }, 40);
+  }, [pages, pushHistorySnapshot, updateMetrics]);
+
+  // Global & Page Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete key on page)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const targetTag = (e.target as HTMLElement)?.tagName?.toUpperCase();
+      if (targetTag === 'INPUT' || targetTag === 'TEXTAREA') return;
+
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+      const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+
+      // Undo: Ctrl+Z
+      if (cmdOrCtrl && !e.shiftKey && e.key.toLowerCase() === 'z') {
+        e.preventDefault();
+        handleUndo();
+        return;
+      }
+
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      if ((cmdOrCtrl && e.key.toLowerCase() === 'y') || (cmdOrCtrl && e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      // Cut: Ctrl+X when no selection or focus is on page header
+      const isContentEditable = (e.target as HTMLElement)?.getAttribute('contenteditable') === 'true' ||
+                                (e.target as HTMLElement)?.closest('[contenteditable="true"]');
+
+      // Click on page sheet / header and press Delete or Backspace -> Deletes page directly without popup
+      if ((e.key === 'Delete' || e.key === 'Backspace') && !isContentEditable) {
+        if (pages.length > 1) {
+          e.preventDefault();
+          deletePageDirect(selectedPageIndex);
+        }
+      }
+
+      // Alt+Delete shortcut to delete active page even when inside editor
+      if (e.altKey && (e.key === 'Delete' || e.key === 'Backspace')) {
+        if (pages.length > 1) {
+          e.preventDefault();
+          deletePageDirect(activePageRef.current);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo, deletePageDirect, pages.length, selectedPageIndex]);
 
   // 3. Insert Page Break (Print-cut marker)
   const handleInsertPageBreak = () => {
@@ -780,6 +989,7 @@ export default function ExpDocStudio() {
     const template = TEMPLATES.find(t => t.id === templateId);
     if (!template) return;
     setPages(template.pages);
+    pushHistorySnapshot(template.pages);
     setTimeout(() => {
       if (pageRefs.current[0]) {
         pageRefs.current[0].innerHTML = template.pages[0];
@@ -792,6 +1002,7 @@ export default function ExpDocStudio() {
   // Clear Document Canvas via custom ConfirmModal popup
   const executeClear = () => {
     setPages(['<p><br></p>']);
+    pushHistorySnapshot(['<p><br></p>']);
     setTimeout(() => {
       if (pageRefs.current[0]) pageRefs.current[0].innerHTML = '<p><br></p>';
       updateMetrics();
@@ -1002,11 +1213,11 @@ export default function ExpDocStudio() {
           </div>
         </div>
 
-        {/* Word-Style Toolbar Ribbon (STICKY ON TOP - Appears pinned on scroll with elegant backdrop) */}
-        <div className={`sticky top-2 sm:top-3 z-30 mb-6 sm:mb-8 transition-all duration-300 rounded-2xl sm:rounded-3xl p-2 sm:p-3 backdrop-blur-2xl ${
+        {/* Word-Style Toolbar Ribbon (STICKY ON TOP - Stays pinned when scrolling with high-contrast backdrop) */}
+        <div className={`sticky top-0 sm:top-2 z-40 mb-5 sm:mb-7 transition-all duration-300 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 backdrop-blur-2xl ${
           isScrolled 
-            ? 'bg-white/98 dark:bg-[#070b18]/98 border border-indigo-500/40 dark:border-cyan-500/40 shadow-[0_12px_40px_rgba(0,0,0,0.18)] dark:shadow-[0_16px_45px_rgba(0,0,0,0.85)] ring-1 ring-indigo-500/20' 
-            : 'bg-white/95 dark:bg-[#070b18]/95 border border-slate-200/90 dark:border-white/10 shadow-xl'
+            ? 'bg-white/98 dark:bg-[#070b18]/98 border border-indigo-500/50 dark:border-cyan-500/50 shadow-[0_12px_45px_rgba(0,0,0,0.18)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.9)] ring-1 ring-indigo-500/20' 
+            : 'bg-white dark:bg-[#070b18] border border-slate-200/90 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)]'
         }`}>
           
           <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
@@ -1014,18 +1225,46 @@ export default function ExpDocStudio() {
             {/* Undo / Redo */}
             <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
               <button 
-                onClick={() => formatDoc('undo')} 
-                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
+                onClick={handleUndo} 
+                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
                 title="Undo (Ctrl+Z)"
               >
                 <Undo2 className="w-4 h-4" />
               </button>
               <button 
-                onClick={() => formatDoc('redo')} 
-                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Redo (Ctrl+Y)"
+                onClick={handleRedo} 
+                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
               >
                 <Redo2 className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Cut / Copy / Paste Cluster */}
+            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+              <button 
+                onClick={handleCut} 
+                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                title="Cut Selection (Ctrl+X)"
+              >
+                <Scissors className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                <span className="hidden md:inline">Cut</span>
+              </button>
+              <button 
+                onClick={handleCopy} 
+                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                title="Copy Selection (Ctrl+C)"
+              >
+                <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                <span className="hidden md:inline">Copy</span>
+              </button>
+              <button 
+                onClick={handlePasteFromToolbar} 
+                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                title="Paste from Clipboard (Ctrl+V)"
+              >
+                <ClipboardPaste className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                <span className="hidden md:inline">Paste</span>
               </button>
             </div>
 
@@ -1365,6 +1604,18 @@ export default function ExpDocStudio() {
                   <option value="CONFIDENTIAL">CONFIDENTIAL</option>
                 </select>
               </div>
+
+              {/* Direct Delete Page Button (No Popup) */}
+              {pages.length > 1 && (
+                <button
+                  onClick={() => deletePageDirect(selectedPageIndex)}
+                  className="px-2 py-1 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-1 text-xs font-mono font-bold transition-colors"
+                  title="Delete Active Page (No popup)"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete Page</span>
+                </button>
+              )}
             </div>
 
             {/* Find & Replace Trigger */}
@@ -1422,24 +1673,54 @@ export default function ExpDocStudio() {
             {pages.map((initialContent, pageIdx) => (
               <div 
                 key={pageIdx}
-                className="group/page relative w-full min-h-[1050px] bg-white text-slate-900 rounded-lg shadow-2xl p-8 sm:p-14 mb-8 border border-slate-200 transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+                tabIndex={0}
+                onClick={() => {
+                  setSelectedPageIndex(pageIdx);
+                  activePageRef.current = pageIdx;
+                }}
+                onKeyDown={(e) => {
+                  if ((e.key === 'Delete' || e.key === 'Backspace') && e.target === e.currentTarget) {
+                    e.preventDefault();
+                    deletePageDirect(pageIdx);
+                  }
+                }}
+                className={`group/page relative w-full min-h-[1050px] bg-white text-slate-900 rounded-lg shadow-2xl p-8 sm:p-14 mb-8 border transition-all hover:shadow-[0_20px_50px_rgba(0,0,0,0.15)] focus:outline-none ${
+                  selectedPageIndex === pageIdx 
+                    ? 'border-indigo-500/70 dark:border-cyan-500/70 ring-2 ring-indigo-500/30 dark:ring-cyan-500/30' 
+                    : 'border-slate-200'
+                }`}
               >
-                {/* Visual Page Header Bar with Page Number & Delete Page Option */}
-                <div className="flex items-center justify-between pb-3 mb-6 border-b border-slate-100 text-[11px] font-mono text-slate-400 select-none">
+                {/* Visual Page Header Bar with Page Number & Direct Delete Page Option */}
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedPageIndex(pageIdx);
+                    activePageRef.current = pageIdx;
+                  }}
+                  className="flex items-center justify-between pb-3 mb-6 border-b border-slate-100 text-[11px] font-mono text-slate-400 select-none cursor-pointer"
+                >
                   <span className="flex items-center gap-1.5 font-bold text-indigo-600">
                     <Layers className="w-3 h-3" />
                     PAGE {pageIdx + 1} OF {pages.length}
+                    {selectedPageIndex === pageIdx && (
+                      <span className="ml-2 px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-600 text-[9px] font-semibold border border-indigo-200">
+                        Selected • Press Delete key to remove
+                      </span>
+                    )}
                   </span>
 
                   <div className="flex items-center gap-2">
-                    {/* Delete Page Button */}
+                    {/* Direct Delete Page Button (NO POPUP) */}
                     {pages.length > 1 && (
                       <button
-                        onClick={() => requestDeletePage(pageIdx)}
-                        className="flex items-center gap-1 text-slate-400 hover:text-red-600 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors text-[10px] font-mono font-medium"
-                        title="Delete this page"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deletePageDirect(pageIdx);
+                        }}
+                        className="flex items-center gap-1 text-red-500 hover:text-red-700 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors text-[10px] font-mono font-bold"
+                        title="Delete this page directly (No popup)"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                         <span>Delete Page</span>
                       </button>
                     )}
@@ -1577,20 +1858,6 @@ export default function ExpDocStudio() {
           isDestructive={false}
         />
 
-        {/* 4. Delete Specific Page Confirmation Popup */}
-        <ConfirmModal
-          isOpen={confirmDeletePageOpen}
-          onClose={() => {
-            setConfirmDeletePageOpen(false);
-            setPageToDelete(null);
-          }}
-          onConfirm={executeDeletePage}
-          title={`Delete Page ${(pageToDelete ?? 0) + 1}?`}
-          message={`Are you sure you want to remove Page ${(pageToDelete ?? 0) + 1}? All content on this specific sheet will be permanently deleted.`}
-          confirmText="Delete Page"
-          cancelText="Keep Page"
-          isDestructive={true}
-        />
 
         {/* 5. Insert Graphic via URL Popup */}
         {imageModalOpen && (
