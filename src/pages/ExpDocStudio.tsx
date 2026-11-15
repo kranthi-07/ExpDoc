@@ -42,7 +42,9 @@ import {
   Replace,
   Stamp,
   Copy,
-  ClipboardPaste
+  ClipboardPaste,
+  Type,
+  FileText
 } from 'lucide-react';
 import PageTransition from '../components/PageTransition';
 import DownloadModal from '../components/DownloadModal';
@@ -51,29 +53,29 @@ import BuildingPdfModal from '../components/BuildingPdfModal';
 import { haptics } from '../utils/haptics';
 import { toast } from 'sonner';
 
-// Curated Word font families
+// Curated font families
 const FONT_FAMILIES = [
-  { label: 'Calibri (Word Classic)', value: 'Calibri, sans-serif' },
+  { label: 'Calibri', value: 'Calibri, sans-serif' },
   { label: 'Arial', value: 'Arial, Helvetica, sans-serif' },
-  { label: 'Times New Roman', value: '"Times New Roman", Times, serif' },
+  { label: 'Times', value: '"Times New Roman", Times, serif' },
   { label: 'Georgia', value: 'Georgia, serif' },
   { label: 'Inter', value: 'Inter, sans-serif' },
-  { label: 'Courier New (Code)', value: '"Courier New", Courier, monospace' },
-  { label: 'Trebuchet MS', value: '"Trebuchet MS", sans-serif' },
+  { label: 'Courier', value: '"Courier New", Courier, monospace' },
+  { label: 'Trebuchet', value: '"Trebuchet MS", sans-serif' },
   { label: 'Verdana', value: 'Verdana, sans-serif' },
 ];
 
-// Standard Word font sizes
+// Clean concise font sizes
 const FONT_SIZES = [
-  { label: '10 pt', value: '13px' },
-  { label: '11 pt (Body)', value: '15px' },
-  { label: '12 pt (Standard)', value: '16px' },
-  { label: '14 pt (Subtitle)', value: '18px' },
-  { label: '16 pt (Section)', value: '21px' },
-  { label: '18 pt (H3)', value: '24px' },
-  { label: '24 pt (H2)', value: '32px' },
-  { label: '32 pt (H1)', value: '42px' },
-  { label: '44 pt (Title)', value: '58px' },
+  { label: '10pt', value: '13px' },
+  { label: '11pt', value: '15px' },
+  { label: '12pt', value: '16px' },
+  { label: '14pt', value: '18px' },
+  { label: '16pt', value: '21px' },
+  { label: '18pt', value: '24px' },
+  { label: '24pt', value: '32px' },
+  { label: '32pt', value: '42px' },
+  { label: '44pt', value: '58px' },
 ];
 
 // Document templates
@@ -177,6 +179,10 @@ export default function ExpDocStudio() {
   const [historyIndex, setHistoryIndex] = useState(0);
   const [selectedPageIndex, setSelectedPageIndex] = useState<number>(0);
   
+  // Categorized Ribbon Tabs State (Home, Edit, Insert, Page)
+  type RibbonCategory = 'home' | 'edit' | 'insert' | 'page';
+  const [activeRibbonTab, setActiveRibbonTab] = useState<RibbonCategory>('home');
+
   // Advanced Features State
   const [isScrolled, setIsScrolled] = useState(false);
   const [lineSpacing, setLineSpacing] = useState('1.7');
@@ -1224,381 +1230,538 @@ export default function ExpDocStudio() {
           </div>
         </div>
 
-        {/* Word-Style Toolbar Ribbon (STICKY ON TOP - Stays pinned when scrolling with high-contrast backdrop) */}
-        <div className={`sticky top-0 sm:top-2 z-40 mb-5 sm:mb-7 transition-all duration-300 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 backdrop-blur-2xl ${
+        {/* Word-Style Categorized Ribbon Toolbar (STICKY ON TOP - Maximum 2-3 clean rows on mobile, 2 rows on PC) */}
+        <div className={`sticky top-0 sm:top-2 z-40 mb-4 sm:mb-6 transition-all duration-300 rounded-2xl sm:rounded-3xl p-2 sm:p-2.5 backdrop-blur-2xl ${
           isScrolled 
             ? 'bg-white/98 dark:bg-[#070b18]/98 border border-indigo-500/50 dark:border-cyan-500/50 shadow-[0_12px_45px_rgba(0,0,0,0.18)] dark:shadow-[0_16px_50px_rgba(0,0,0,0.9)] ring-1 ring-indigo-500/20' 
             : 'bg-white dark:bg-[#070b18] border border-slate-200/90 dark:border-white/10 shadow-[0_8px_30px_rgba(0,0,0,0.08)]'
         }`}>
           
-          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-            
-            {/* Undo / Redo */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={handleUndo} 
-                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
-                title="Undo (Ctrl+Z)"
+          {/* ROW 1: Ribbon Category Navigation & Universal Quick Access Toolbar */}
+          <div className="flex items-center justify-between gap-1.5 pb-2 mb-2 border-b border-slate-100 dark:border-white/10">
+            {/* Category Tab Switchers */}
+            <div className="flex items-center gap-1 sm:gap-1.5 p-0.5 bg-slate-100/80 dark:bg-white/5 rounded-2xl border border-slate-200/60 dark:border-white/5">
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.selection();
+                  setActiveRibbonTab('home');
+                }}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeRibbonTab === 'home'
+                    ? 'bg-indigo-600 dark:bg-cyan-500 text-white shadow-sm shadow-indigo-500/25 dark:shadow-cyan-500/25 font-bold'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10 font-medium'
+                }`}
               >
-                <Undo2 className="w-4 h-4" />
+                <Type className="w-3.5 h-3.5" />
+                <span>Home</span>
               </button>
-              <button 
-                onClick={handleRedo} 
-                className="p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
-                title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
-              >
-                <Redo2 className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Cut / Copy / Paste Cluster */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={handleCut} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
-                title="Cut Selection (Ctrl+X)"
-              >
-                <Scissors className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                <span className="hidden md:inline">Cut</span>
-              </button>
-              <button 
-                onClick={handleCopy} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
-                title="Copy Selection (Ctrl+C)"
-              >
-                <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                <span className="hidden md:inline">Copy</span>
-              </button>
-              <button 
-                onClick={handlePasteFromToolbar} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
-                title="Paste from Clipboard (Ctrl+V)"
-              >
-                <ClipboardPaste className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                <span className="hidden md:inline">Paste</span>
-              </button>
-            </div>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5 hidden sm:block" />
-
-            {/* Template Selector */}
-            <select
-              onChange={(e) => handleTemplateSelect(e.target.value)}
-              defaultValue=""
-              className="px-2.5 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none"
-            >
-              <option value="" disabled>Load Template</option>
-              {TEMPLATES.map(t => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-
-            {/* Font Family Selector */}
-            <select
-              value={currentFont}
-              onChange={(e) => handleFontChange(e.target.value)}
-              className="px-2.5 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none max-w-[125px] sm:max-w-none truncate"
-            >
-              {FONT_FAMILIES.map(f => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-            </select>
-
-            {/* Font Size Selector */}
-            <select
-              value={currentFontSize}
-              onChange={(e) => handleFontSizeChange(e.target.value)}
-              className="px-2 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none"
-            >
-              {FONT_SIZES.map(s => (
-                <option key={s.value} value={s.value}>{s.label}</option>
-              ))}
-            </select>
-
-            {/* Line Spacing Selector */}
-            <select
-              value={lineSpacing}
-              onChange={(e) => handleLineSpacingChange(e.target.value)}
-              className="px-2 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none"
-              title="Line Spacing"
-            >
-              <option value="1.15">1.15 (Tight)</option>
-              <option value="1.5">1.50 (Standard)</option>
-              <option value="1.7">1.70 (Comfort)</option>
-              <option value="2.0">2.00 (Double)</option>
-            </select>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5" />
-
-            {/* Formatting (B, I, U, S, Sub, Super, Eraser) */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={() => formatDoc('bold')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 font-bold"
-                title="Bold (Ctrl+B)"
-              >
-                <Bold className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('italic')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
-                title="Italic (Ctrl+I)"
-              >
-                <Italic className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('underline')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
-                title="Underline (Ctrl+U)"
-              >
-                <Underline className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('strikeThrough')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
-                title="Strikethrough"
-              >
-                <Strikethrough className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('subscript')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
-                title="Subscript (X₂)"
-              >
-                <Subscript className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('superscript')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
-                title="Superscript (X²)"
-              >
-                <Superscript className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('removeFormat')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 text-red-500"
-                title="Clear Formatting (Remove styles)"
-              >
-                <Eraser className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Text Color Input */}
-            <label className="p-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200/60 dark:border-white/5 cursor-pointer flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10" title="Text Color">
-              <Palette className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-              <input 
-                type="color" 
-                className="sr-only" 
-                onChange={(e) => formatDoc('foreColor', e.target.value)} 
-              />
-            </label>
-
-            {/* Highlight Color Input */}
-            <label className="p-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200/60 dark:border-white/5 cursor-pointer flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10" title="Text Highlight">
-              <Highlighter className="w-3.5 h-3.5 text-amber-500" />
-              <input 
-                type="color" 
-                className="sr-only" 
-                onChange={(e) => formatDoc('hiliteColor', e.target.value)} 
-              />
-            </label>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5" />
-
-            {/* ALIGNMENTS (Left, Center, Right, Justify) */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={() => setAlignment('left')} 
-                className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'left' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
-                title="Align Left"
-              >
-                <AlignLeft className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => setAlignment('center')} 
-                className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'center' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
-                title="Align Center"
-              >
-                <AlignCenter className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => setAlignment('right')} 
-                className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'right' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
-                title="Align Right"
-              >
-                <AlignRight className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => setAlignment('justify')} 
-                className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'justify' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
-                title="Justify (Equal Margin Wrap like in MS Word)"
-              >
-                <AlignJustify className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Indent / Outdent */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={() => formatDoc('outdent')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Decrease Indent"
-              >
-                <Outdent className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('indent')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Increase Indent"
-              >
-                <Indent className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5" />
-
-            {/* Lists & Headings */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={() => formatDoc('insertUnorderedList')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Bulleted List"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => formatDoc('insertOrderedList')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Numbered List"
-              >
-                <ListOrdered className="w-3.5 h-3.5" />
-              </button>
-              <button 
-                onClick={() => handleBlockFormat('<h1>')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
-                title="Heading 1"
-              >
-                H1
-              </button>
-              <button 
-                onClick={() => handleBlockFormat('<h2>')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
-                title="Heading 2"
-              >
-                H2
-              </button>
-              <button 
-                onClick={() => handleBlockFormat('<h3>')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
-                title="Heading 3"
-              >
-                H3
-              </button>
-            </div>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5" />
-
-            {/* Insert Blocks: Image, Table, Callout, Code, Date, Divider */}
-            <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
-              <button 
-                onClick={() => fileInputRef.current?.click()} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
-                title="Insert Image (Local File or Paste)"
-              >
-                <ImageIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                <span className="hidden sm:inline">Image</span>
-              </button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                accept="image/*" 
-                className="hidden" 
-                onChange={(e) => {
-                  if (e.target.files && e.target.files.length > 0) {
-                    insertImageFile(e.target.files[0]);
-                    e.target.value = '';
-                  }
-                }} 
-              />
 
               <button
-                onClick={() => setImageModalOpen(true)}
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Insert Image via Web URL"
-              >
-                <LinkIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-              </button>
-
-              <button 
-                onClick={() => insertTable(3, 3)} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
-                title="Insert 3x3 Table"
-              >
-                <Table className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-                <span className="hidden sm:inline">Table</span>
-              </button>
-
-              <button 
-                onClick={insertBlockquote} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Insert Callout / Quote Box"
-              >
-                <Quote className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-              </button>
-
-              <button 
-                onClick={insertCodeBlock} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Insert Code Snippet"
-              >
-                <Code className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-              </button>
-
-              <button 
-                onClick={insertDateStamp} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Insert Current Date Stamp"
-              >
-                <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
-              </button>
-
-              <button 
-                onClick={() => formatDoc('insertHorizontalRule')} 
-                className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
-                title="Insert Horizontal Divider"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5" />
-
-            {/* ======================================================= */}
-            {/* PAGE FUNCTIONS: ADD PAGE, PAGE BREAK, WATERMARK         */}
-            {/* ======================================================= */}
-            <div className="flex items-center bg-indigo-50/80 dark:bg-indigo-950/40 rounded-xl p-0.5 border border-indigo-200/70 dark:border-indigo-500/30">
-              {/* Add Page Button */}
-              <button
-                onClick={handleAddNewPage}
-                className="px-2 py-1 rounded-lg text-indigo-700 dark:text-cyan-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-bold"
-                title="Add New A4 Page Sheet"
-              >
-                <FilePlus2 className="w-3.5 h-3.5" />
-                <span>+ Page</span>
-              </button>
-
-              {/* Insert Page Break Button */}
-              <button
-                onClick={handleInsertPageBreak}
-                className="px-2 py-1 rounded-lg text-indigo-700 dark:text-cyan-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium"
-                title="Insert Page Break (Forced Print Cut)"
+                type="button"
+                onClick={() => {
+                  haptics.selection();
+                  setActiveRibbonTab('edit');
+                }}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeRibbonTab === 'edit'
+                    ? 'bg-indigo-600 dark:bg-cyan-500 text-white shadow-sm shadow-indigo-500/25 dark:shadow-cyan-500/25 font-bold'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10 font-medium'
+                }`}
               >
                 <Scissors className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Page Break</span>
+                <span>Edit</span>
               </button>
 
-              {/* Watermark Selector with Stamp icon */}
-              <div className="flex items-center gap-1 px-1">
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.selection();
+                  setActiveRibbonTab('insert');
+                }}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeRibbonTab === 'insert'
+                    ? 'bg-indigo-600 dark:bg-cyan-500 text-white shadow-sm shadow-indigo-500/25 dark:shadow-cyan-500/25 font-bold'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10 font-medium'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Insert</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  haptics.selection();
+                  setActiveRibbonTab('page');
+                }}
+                className={`px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-xl text-xs font-mono transition-all flex items-center gap-1.5 active:scale-95 ${
+                  activeRibbonTab === 'page'
+                    ? 'bg-indigo-600 dark:bg-cyan-500 text-white shadow-sm shadow-indigo-500/25 dark:shadow-cyan-500/25 font-bold'
+                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/10 font-medium'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>Page</span>
+              </button>
+            </div>
+
+            {/* Quick Access Toolbar: Undo/Redo & Page Indicator (always accessible across all categories) */}
+            <div className="flex items-center gap-1 sm:gap-1.5">
+              <span className="hidden md:inline-flex text-[11px] font-mono text-slate-400 dark:text-zinc-500 px-2 py-1 rounded-lg bg-slate-100/80 dark:bg-white/5 border border-slate-200/50 dark:border-white/5">
+                P. {selectedPageIndex + 1}/{pages.length}
+              </span>
+
+              <div className="flex items-center bg-slate-100/80 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                <button 
+                  onClick={handleUndo} 
+                  className="p-1 sm:p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                  title="Undo (Ctrl+Z)"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                </button>
+                <button 
+                  onClick={handleRedo} 
+                  className="p-1 sm:p-1.5 rounded-lg text-slate-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 transition-colors"
+                  title="Redo (Ctrl+Y or Ctrl+Shift+Z)"
+                >
+                  <Redo2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* ROW 2 & 3: CATEGORY ACTIVE TOOLS */}
+          {activeRibbonTab === 'home' && (
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 pt-0.5">
+              
+              {/* Row 2 on Mobile: Font Family + Font Size + Alignment Cluster */}
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <select
+                  value={currentFont}
+                  onChange={(e) => handleFontChange(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none flex-1 sm:flex-none sm:min-w-[90px]"
+                  title="Font Family"
+                >
+                  {FONT_FAMILIES.map(f => (
+                    <option key={f.value} value={f.value}>{f.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={currentFontSize}
+                  onChange={(e) => handleFontSizeChange(e.target.value)}
+                  className="px-2 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none w-[64px] sm:w-auto text-center"
+                  title="Font Size"
+                >
+                  {FONT_SIZES.map(s => (
+                    <option key={s.value} value={s.value}>{s.label}</option>
+                  ))}
+                </select>
+
+                {/* Alignment: Left, Center, Right, Justify */}
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5 ml-auto sm:ml-0">
+                  <button 
+                    onClick={() => setAlignment('left')} 
+                    className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'left' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
+                    title="Align Left"
+                  >
+                    <AlignLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setAlignment('center')} 
+                    className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'center' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
+                    title="Align Center"
+                  >
+                    <AlignCenter className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setAlignment('right')} 
+                    className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'right' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
+                    title="Align Right"
+                  >
+                    <AlignRight className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => setAlignment('justify')} 
+                    className={`p-1.5 rounded-lg transition-colors ${currentAlignment === 'justify' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10'}`}
+                    title="Justify"
+                  >
+                    <AlignJustify className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop separator */}
+              <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5 hidden sm:block" />
+
+              {/* Row 3 on Mobile: Styles (B, I, U, S) + Colors + Headings + Lists */}
+              <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-2 w-full sm:w-auto">
+                {/* Text Formatting: B, I, U, S */}
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => formatDoc('bold')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 font-bold"
+                    title="Bold"
+                  >
+                    <Bold className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('italic')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
+                    title="Italic"
+                  >
+                    <Italic className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('underline')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
+                    title="Underline"
+                  >
+                    <Underline className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('strikeThrough')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
+                    title="Strikethrough"
+                  >
+                    <Strikethrough className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Color & Clear */}
+                <div className="flex items-center gap-1">
+                  <label className="p-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200/60 dark:border-white/5 cursor-pointer flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10" title="Text Color">
+                    <Palette className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <input 
+                      type="color" 
+                      className="sr-only" 
+                      onChange={(e) => formatDoc('foreColor', e.target.value)} 
+                    />
+                  </label>
+
+                  <label className="p-1.5 bg-slate-100 dark:bg-white/5 rounded-xl border border-slate-200/60 dark:border-white/5 cursor-pointer flex items-center justify-center hover:bg-slate-200 dark:hover:bg-white/10" title="Text Highlight">
+                    <Highlighter className="w-3.5 h-3.5 text-amber-500" />
+                    <input 
+                      type="color" 
+                      className="sr-only" 
+                      onChange={(e) => formatDoc('hiliteColor', e.target.value)} 
+                    />
+                  </label>
+
+                  <button 
+                    onClick={() => formatDoc('removeFormat')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 text-red-500"
+                    title="Clear Formatting"
+                  >
+                    <Eraser className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {/* Headings */}
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => handleBlockFormat('<h1>')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
+                    title="Heading 1"
+                  >
+                    H1
+                  </button>
+                  <button 
+                    onClick={() => handleBlockFormat('<h2>')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
+                    title="Heading 2"
+                  >
+                    H2
+                  </button>
+                  <button 
+                    onClick={() => handleBlockFormat('<h3>')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 text-xs font-bold"
+                    title="Heading 3"
+                  >
+                    H3
+                  </button>
+                </div>
+
+                {/* Lists */}
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => formatDoc('insertUnorderedList')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
+                    title="Bulleted List"
+                  >
+                    <List className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('insertOrderedList')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10"
+                    title="Numbered List"
+                  >
+                    <ListOrdered className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {activeRibbonTab === 'edit' && (
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 pt-0.5">
+              {/* Row 2 on Mobile: Clipboard & Spacing */}
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={handleCut} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                    title="Cut (Ctrl+X)"
+                  >
+                    <Scissors className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span className="hidden sm:inline">Cut</span>
+                  </button>
+                  <button 
+                    onClick={handleCopy} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                    title="Copy (Ctrl+C)"
+                  >
+                    <Copy className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span className="hidden sm:inline">Copy</span>
+                  </button>
+                  <button 
+                    onClick={handlePasteFromToolbar} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-medium transition-colors"
+                    title="Paste (Ctrl+V)"
+                  >
+                    <ClipboardPaste className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span className="hidden sm:inline">Paste</span>
+                  </button>
+                </div>
+
+                {/* Line Spacing Selector */}
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl px-2 py-0.5 border border-slate-200/60 dark:border-white/5">
+                  <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 mr-1 hidden sm:inline">Line:</span>
+                  <select
+                    value={lineSpacing}
+                    onChange={(e) => handleLineSpacingChange(e.target.value)}
+                    className="py-1 bg-transparent text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none cursor-pointer"
+                    title="Line Spacing"
+                  >
+                    <option value="1.15">1.15</option>
+                    <option value="1.5">1.50</option>
+                    <option value="1.7">1.70</option>
+                    <option value="2.0">2.00</option>
+                  </select>
+                </div>
+
+                {/* Find & Replace Trigger */}
+                <button
+                  onClick={() => setFindReplaceOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 text-slate-700 dark:text-zinc-200 hover:text-indigo-600 dark:hover:text-cyan-400 flex items-center gap-1 text-xs font-mono ml-auto sm:ml-0"
+                  title="Find and Replace"
+                >
+                  <Replace className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                  <span>Find</span>
+                </button>
+              </div>
+
+              {/* Desktop separator */}
+              <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5 hidden sm:block" />
+
+              {/* Row 3 on Mobile: Indents & Scripts */}
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => formatDoc('outdent')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs"
+                    title="Decrease Indent"
+                  >
+                    <Outdent className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-mono">Outdent</span>
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('indent')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs"
+                    title="Increase Indent"
+                  >
+                    <Indent className="w-3.5 h-3.5" />
+                    <span className="text-[11px] font-mono">Indent</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => formatDoc('subscript')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
+                    title="Subscript (X₂)"
+                  >
+                    <Subscript className="w-3.5 h-3.5" />
+                  </button>
+                  <button 
+                    onClick={() => formatDoc('superscript')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-200 hover:bg-white dark:hover:bg-white/10"
+                    title="Superscript (X²)"
+                  >
+                    <Superscript className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {activeRibbonTab === 'insert' && (
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 pt-0.5">
+              
+              {/* Row 2 on Mobile: Image + URL + Table + Divider */}
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => fileInputRef.current?.click()} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Upload Image File"
+                  >
+                    <ImageIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>Image</span>
+                  </button>
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files.length > 0) {
+                        insertImageFile(e.target.files[0]);
+                        e.target.value = '';
+                      }
+                    }} 
+                  />
+
+                  <button
+                    onClick={() => setImageModalOpen(true)}
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert Image via Web URL"
+                  >
+                    <LinkIcon className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>URL</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={() => insertTable(3, 3)} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert 3x3 Table"
+                  >
+                    <Table className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>Table</span>
+                  </button>
+
+                  <button 
+                    onClick={() => formatDoc('insertHorizontalRule')} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert Divider Line"
+                  >
+                    <Minus className="w-3.5 h-3.5" />
+                    <span>Line</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Desktop separator */}
+              <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5 hidden sm:block" />
+
+              {/* Row 3 on Mobile: Page Break + Quote + Code + Date */}
+              <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto">
+                <button
+                  onClick={handleInsertPageBreak}
+                  className="px-2 py-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                  title="Insert Page Break"
+                >
+                  <Scissors className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                  <span>Break</span>
+                </button>
+
+                <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
+                  <button 
+                    onClick={insertBlockquote} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert Callout Quote"
+                  >
+                    <Quote className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>Quote</span>
+                  </button>
+
+                  <button 
+                    onClick={insertCodeBlock} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert Code Snippet"
+                  >
+                    <Code className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>Code</span>
+                  </button>
+
+                  <button 
+                    onClick={insertDateStamp} 
+                    className="p-1.5 rounded-lg text-slate-700 dark:text-zinc-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-medium"
+                    title="Insert Date Stamp"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-indigo-600 dark:text-cyan-400" />
+                    <span>Date</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+
+          {activeRibbonTab === 'page' && (
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-1.5 sm:gap-2 pt-0.5">
+              
+              {/* Row 2 on Mobile: Add Page + Delete + Template */}
+              <div className="flex items-center gap-1.5 sm:gap-2 w-full sm:w-auto">
+              {/* Add Page & Delete Page Cluster */}
+              <div className="flex items-center bg-indigo-50/80 dark:bg-indigo-950/40 rounded-xl p-0.5 border border-indigo-200/70 dark:border-indigo-500/30">
+                <button
+                  onClick={handleAddNewPage}
+                  className="px-2.5 py-1 rounded-lg text-indigo-700 dark:text-cyan-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-bold"
+                  title="Add New A4 Page Sheet"
+                >
+                  <FilePlus2 className="w-3.5 h-3.5" />
+                  <span>+ Add Page</span>
+                </button>
+
+                {pages.length > 1 && (
+                  <button
+                    onClick={() => deletePageDirect(selectedPageIndex)}
+                    className="px-2.5 py-1 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-1 text-xs font-mono font-bold transition-colors"
+                    title="Delete Active Page (Selected page)"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Page</span>
+                  </button>
+                )}
+              </div>
+
+                <select
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  defaultValue=""
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 rounded-xl text-xs font-mono font-medium text-slate-700 dark:text-zinc-200 focus:outline-none flex-1 sm:flex-none"
+                  title="Load Template"
+                >
+                  <option value="" disabled>Template</option>
+                  {TEMPLATES.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Desktop separator */}
+              <div className="w-px h-5 bg-slate-200 dark:bg-white/10 mx-0.5 hidden sm:block" />
+
+              {/* Row 3 on Mobile: Watermark + Zoom + Clear */}
+              <div className="flex items-center justify-between sm:justify-start gap-1.5 sm:gap-2 w-full sm:w-auto">
+
+              {/* Watermark Selector */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-white/5 rounded-xl px-2 py-0.5 border border-slate-200/60 dark:border-white/5">
                 <Stamp className="w-3.5 h-3.5 text-indigo-700 dark:text-cyan-300" />
                 <select
                   value={watermark}
@@ -1607,7 +1770,7 @@ export default function ExpDocStudio() {
                     setWatermark(val);
                     toast.success(val === 'NONE' ? 'Watermark removed' : `${val} Watermark active`);
                   }}
-                  className="px-1 py-1 bg-transparent text-[11px] font-mono font-semibold text-indigo-700 dark:text-cyan-300 focus:outline-none cursor-pointer"
+                  className="py-1 bg-transparent text-[11px] font-mono font-semibold text-indigo-700 dark:text-cyan-300 focus:outline-none cursor-pointer"
                   title="Document Watermark"
                 >
                   <option value="NONE">No Watermark</option>
@@ -1616,57 +1779,40 @@ export default function ExpDocStudio() {
                 </select>
               </div>
 
-              {/* Direct Delete Page Button (No Popup) */}
-              {pages.length > 1 && (
+              {/* Zoom Controls */}
+              <div className="flex items-center bg-slate-100 dark:bg-white/5 rounded-xl p-0.5 border border-slate-200/60 dark:border-white/5">
                 <button
-                  onClick={() => deletePageDirect(selectedPageIndex)}
-                  className="px-2 py-1 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-1 text-xs font-mono font-bold transition-colors"
-                  title="Delete Active Page (No popup)"
+                  onClick={() => setZoomLevel(prev => Math.max(prev - 10, 75))}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  title="Zoom Out"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </button>
+                <span className="text-[11px] font-mono font-semibold px-1.5 text-slate-700 dark:text-zinc-300">
+                  {zoomLevel}%
+                </span>
+                <button
+                  onClick={() => setZoomLevel(prev => Math.min(prev + 10, 150))}
+                  className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                  title="Zoom In"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+                {/* Clear Document Button */}
+                <button
+                  onClick={() => setConfirmClearOpen(true)}
+                  className="p-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors ml-auto sm:ml-0"
+                  title="Clear All Content"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Page</span>
                 </button>
-              )}
+              </div>
+
             </div>
+          )}
 
-            {/* Find & Replace Trigger */}
-            <button
-              onClick={() => setFindReplaceOpen(true)}
-              className="p-1.5 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/5 text-slate-600 dark:text-zinc-300 hover:text-indigo-600 dark:hover:text-cyan-400 flex items-center gap-1 text-xs font-mono"
-              title="Find and Replace Text"
-            >
-              <Replace className="w-3.5 h-3.5" />
-              <span className="hidden xl:inline text-[11px]">Find & Replace</span>
-            </button>
-
-            {/* Right Tools (Clear, Zoom) */}
-            <div className="ml-auto flex items-center gap-1">
-              <button
-                onClick={() => setConfirmClearOpen(true)}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 transition-colors"
-                title="Clear All Content"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={() => setZoomLevel(prev => Math.min(prev + 10, 150))}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                title="Zoom In"
-              >
-                <ZoomIn className="w-3.5 h-3.5" />
-              </button>
-
-              <button
-                onClick={() => setZoomLevel(prev => Math.max(prev - 10, 75))}
-                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white"
-                title="Zoom Out"
-              >
-                <ZoomOut className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-          </div>
         </div>
 
         {/* Visual Document Canvas Area (Word Paper A4 Stack) */}
