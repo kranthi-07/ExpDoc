@@ -25,7 +25,7 @@ export default function Terms() {
               1. Local-Silicon Execution Principle
             </h2>
             <p>
-              Expedit operates as a zero-cloud, client-side utility suite. All operations—including image conversions, page extractions, watermarking, merges, and bursts—are executed within your browser's dedicated WebAssembly / JavaScript memory space. We never intercept, ingest, store, or transmit your source files.
+              EXPDOC operates as a zero-cloud, client-side utility suite. All operations—including image conversions, page extractions, watermarking, merges, and bursts—are executed within your browser's dedicated WebAssembly / JavaScript memory space. We never intercept, ingest, store, or transmit your source files.
             </p>
           </div>
 
@@ -34,7 +34,7 @@ export default function Terms() {
               2. Compression Processing Protocol
             </h2>
             <p>
-              When utilizing local advanced compression routines via self-hosted backends, transmissions occur purely between your local browser and your configured endpoint. Expedit does not operate a centralized intermediary database.
+              All PDF compression routines execute locally within your browser using in-memory raster downsampling and object stream compaction. EXPDOC operates on an air-gapped model and does not store or process your documents on centralized cloud servers.
             </p>
           </div>
 
@@ -43,7 +43,7 @@ export default function Terms() {
               3. Warranty Disclaimer
             </h2>
             <p>
-              Expedit is provided on an "as-is" and "as-available" foundation without guarantees of any kind. You remain solely responsible for maintaining backup copies of all critical records.
+              EXPDOC is provided on an "as-is" and "as-available" foundation without guarantees of any kind. You remain solely responsible for maintaining backup copies of all critical records.
             </p>
           </div>
         </div>

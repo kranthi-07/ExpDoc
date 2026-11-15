@@ -18,6 +18,7 @@ import {
   FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { haptics } from '../utils/haptics';
 
 export const ALL_TOOLS = [
   { path: '/expdoc-studio', label: 'ExpDoc Studio', category: 'Create', icon: FileText, desc: 'Word-style document crafting & PDF builder' },
@@ -35,7 +36,8 @@ export default function BottomTabBar() {
   const location = useLocation();
   const [isMatrixOpen, setIsMatrixOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'web' | 'app'>(() => {
-    return (localStorage.getItem('expedit_view_mode') as 'web' | 'app') || 'app';
+    return (localStorage.getItem('expdoc_view_mode') as 'web' | 'app') || 
+           (localStorage.getItem('expedit_view_mode') as 'web' | 'app') || 'app';
   });
 
   // Listen to Web vs App OS mode toggle from Navbar
@@ -43,8 +45,12 @@ export default function BottomTabBar() {
     const handler = (e: any) => {
       if (e.detail) setViewMode(e.detail);
     };
+    window.addEventListener('expdoc-view-mode-change', handler);
     window.addEventListener('expedit-view-mode-change', handler);
-    return () => window.removeEventListener('expedit-view-mode-change', handler);
+    return () => {
+      window.removeEventListener('expdoc-view-mode-change', handler);
+      window.removeEventListener('expedit-view-mode-change', handler);
+    };
   }, []);
 
   const tabs = [
@@ -75,7 +81,10 @@ export default function BottomTabBar() {
               <Link
                 key={tab.path}
                 to={tab.path}
-                onClick={() => setIsMatrixOpen(false)}
+                onClick={() => {
+                  haptics.selection();
+                  setIsMatrixOpen(false);
+                }}
                 className={`relative flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-200 active:scale-95 group ${
                   isActive ? 'text-indigo-600 dark:text-cyan-400' : 'text-slate-500 dark:text-zinc-400'
                 }`}
@@ -107,7 +116,10 @@ export default function BottomTabBar() {
 
           {/* Central / End "More Tools" App Launcher Tab */}
           <button
-            onClick={() => setIsMatrixOpen(!isMatrixOpen)}
+            onClick={() => {
+              haptics.medium();
+              setIsMatrixOpen(!isMatrixOpen);
+            }}
             className={`relative flex flex-col items-center justify-center flex-1 h-full py-1 transition-all duration-200 active:scale-95 group ${
               isMatrixOpen || isMoreActive ? 'text-indigo-600 dark:text-cyan-400' : 'text-slate-500 dark:text-zinc-400'
             }`}
@@ -199,7 +211,10 @@ export default function BottomTabBar() {
                     <Link
                       key={tool.path}
                       to={tool.path}
-                      onClick={() => setIsMatrixOpen(false)}
+                      onClick={() => {
+                        haptics.medium();
+                        setIsMatrixOpen(false);
+                      }}
                       className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-200 active:scale-[0.98] ${
                         isActive 
                           ? 'bg-gradient-to-r from-indigo-500/15 to-violet-500/15 border-indigo-500/50 dark:border-cyan-500/50 shadow-md' 

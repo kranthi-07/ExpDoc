@@ -12,6 +12,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import { SortableItem } from '../components/SortableItem';
 import PdfThumbnail from '../components/PdfThumbnail';
 import { toast } from 'sonner';
+import { haptics } from '../utils/haptics';
 
 interface PdfItem {
   id: string;
@@ -46,10 +47,12 @@ export default function MergePdf() {
   };
 
   const removePdf = (idToRemove: string) => {
+    haptics.warning();
     setPdfs(prev => prev.filter(p => p.id !== idToRemove));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    haptics.drag();
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setPdfs((items) => {
@@ -62,9 +65,11 @@ export default function MergePdf() {
 
   const mergePdfs = async (fileName: string) => {
     if (pdfs.length < 2) {
+      haptics.error();
       toast.error("Please upload at least 2 PDFs to merge.");
       return;
     }
+    haptics.heavy();
     setIsProcessing(true);
 
     try {
@@ -88,9 +93,11 @@ export default function MergePdf() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      haptics.success();
       toast.success("PDFs stitched into unified document!");
     } catch (error) {
       console.error("Merge error", error);
+      haptics.error();
       toast.error("Failed to merge PDFs. Ensure none are encrypted or corrupted.");
     } finally {
       setIsProcessing(false);
@@ -144,7 +151,12 @@ export default function MergePdf() {
                 </span>
               </div>
 
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCenter} 
+                onDragStart={() => haptics.drag()}
+                onDragEnd={handleDragEnd}
+              >
                 <SortableContext items={pdfs.map(p => p.id)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                     {pdfs.map((pdf, index) => (
@@ -182,7 +194,10 @@ export default function MergePdf() {
                     ))}
                     
                     {/* Add More Tile */}
-                    <label className="aspect-[3/4] border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-indigo-500 dark:hover:border-cyan-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.04]">
+                    <label 
+                      onClick={() => haptics.selection()}
+                      className="aspect-[3/4] border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-indigo-500 dark:hover:border-cyan-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.04]"
+                    >
                       <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-cyan-400 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                         <Plus className="w-5 h-5" />
                       </div>
@@ -208,14 +223,20 @@ export default function MergePdf() {
               {/* Action Buttons */}
               <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sm:gap-3">
                 <button 
-                  onClick={() => setShowClearConfirm(true)}
+                  onClick={() => {
+                    haptics.warning();
+                    setShowClearConfirm(true);
+                  }}
                   className="w-full sm:w-auto px-5 py-2.5 sm:py-3 text-slate-600 dark:text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5"
                 >
                   <Trash2 className="w-4 h-4" />
                   Clear All
                 </button>
                 <button 
-                  onClick={() => setShowNameModal(true)}
+                  onClick={() => {
+                    haptics.medium();
+                    setShowNameModal(true);
+                  }}
                   disabled={isProcessing || pdfs.length < 2}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white px-7 py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
                 >

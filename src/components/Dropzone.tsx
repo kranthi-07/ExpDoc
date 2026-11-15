@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { UploadCloud, FileUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { haptics } from '../utils/haptics';
 
 interface DropzoneProps {
   onFilesSelect: (files: File[]) => void;
@@ -63,8 +64,10 @@ export default function Dropzone({
     });
 
     if (validFiles.length > 0) {
+      haptics.medium();
       onFilesSelect(multiple ? validFiles : [validFiles[0]]);
     } else {
+      haptics.error();
       toast.error('Unsupported file format. Please select valid documents.');
     }
   };
@@ -75,7 +78,10 @@ export default function Dropzone({
       onDragLeave={handleDragOut}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      onClick={() => fileInputRef.current?.click()}
+      onClick={() => {
+        haptics.selection();
+        fileInputRef.current?.click();
+      }}
       className={`group relative flex flex-col items-center justify-center p-6 sm:p-12 border-2 border-dashed rounded-3xl cursor-pointer transition-all duration-300 overflow-hidden ${
         isDragging 
           ? 'border-indigo-500 bg-indigo-50/70 dark:bg-indigo-500/10 shadow-[0_0_35px_rgba(99,102,241,0.25)] scale-[1.01]' 

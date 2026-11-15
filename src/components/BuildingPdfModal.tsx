@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CheckCircle2, FileText, Sparkles, Cpu } from 'lucide-react';
+import { haptics } from '../utils/haptics';
 
 interface BuildingPdfModalProps {
   isOpen: boolean;
@@ -41,6 +42,7 @@ export default function BuildingPdfModal({
         if (prev >= 100) {
           clearInterval(interval);
           setIsDone(true);
+          haptics.success();
           setTimeout(() => {
             onComplete();
           }, 450);
@@ -59,6 +61,7 @@ export default function BuildingPdfModal({
         if (capped >= 100) {
           clearInterval(interval);
           setIsDone(true);
+          haptics.success();
           setTimeout(() => {
             onComplete();
           }, 450);

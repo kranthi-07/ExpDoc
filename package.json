@@ -1,7 +1,8 @@
 {
-  "name": "expedit",
+  "name": "expdoc",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "EXPDOC • Client-Side Zero-Cloud Document & PDF Studio OS",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -56,7 +56,7 @@ export default function Privacy() {
               3. Service Worker & Offline PWA Cache
             </h2>
             <p>
-              Expedit uses modern Progressive Web App (PWA) cache headers so you can disconnect your internet and execute PDF manipulations completely offline.
+              EXPDOC uses modern Progressive Web App (PWA) cache headers so you can disconnect your internet and execute PDF manipulations completely offline.
             </p>
           </div>
         </div>

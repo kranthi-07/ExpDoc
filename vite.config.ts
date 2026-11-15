@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Expedit PDF',
-        short_name: 'Expedit',
-        description: 'Premium PDF tools processed privately.',
+        name: 'EXPDOC Studio OS',
+        short_name: 'EXPDOC',
+        description: 'Client-side zero-cloud document processing & PDF studio.',
         theme_color: '#09090b',
         background_color: '#09090b',
         display: 'standalone',

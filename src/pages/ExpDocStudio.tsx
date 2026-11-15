@@ -48,6 +48,7 @@ import PageTransition from '../components/PageTransition';
 import DownloadModal from '../components/DownloadModal';
 import ConfirmModal from '../components/ConfirmModal';
 import BuildingPdfModal from '../components/BuildingPdfModal';
+import { haptics } from '../utils/haptics';
 import { toast } from 'sonner';
 
 // Curated Word font families
@@ -258,6 +259,7 @@ export default function ExpDocStudio() {
 
   // Execute formatting commands
   const formatDoc = (command: string, value: string | undefined = undefined) => {
+    haptics.light();
     document.execCommand(command, false, value);
     const activeEl = pageRefs.current[activePageRef.current];
     if (activeEl) {
@@ -268,6 +270,7 @@ export default function ExpDocStudio() {
 
   // Rock-solid Alignment handler (Left, Center, Right, Justify)
   const setAlignment = (align: 'left' | 'center' | 'right' | 'justify') => {
+    haptics.light();
     setCurrentAlignment(align);
     
     // 1. Native execCommand
@@ -737,6 +740,7 @@ export default function ExpDocStudio() {
 
   // Undo function
   const handleUndo = useCallback(() => {
+    haptics.selection();
     if (historyIndex > 0) {
       const targetIndex = historyIndex - 1;
       const targetPages = history[targetIndex];
@@ -759,6 +763,7 @@ export default function ExpDocStudio() {
 
   // Redo function
   const handleRedo = useCallback(() => {
+    haptics.selection();
     if (historyIndex < history.length - 1) {
       const targetIndex = historyIndex + 1;
       const targetPages = history[targetIndex];
@@ -781,6 +786,7 @@ export default function ExpDocStudio() {
 
   // Copy selection or active page
   const handleCopy = useCallback(async () => {
+    haptics.medium();
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
       try {
@@ -805,6 +811,7 @@ export default function ExpDocStudio() {
 
   // Cut selection or active page
   const handleCut = useCallback(async () => {
+    haptics.medium();
     const selection = window.getSelection();
     if (selection && selection.toString().trim()) {
       try {
@@ -844,6 +851,7 @@ export default function ExpDocStudio() {
 
   // Paste from Toolbar
   const handlePasteFromToolbar = useCallback(async () => {
+    haptics.medium();
     try {
       if (navigator.clipboard.read) {
         const items = await navigator.clipboard.read();
@@ -874,6 +882,7 @@ export default function ExpDocStudio() {
 
   // 1. Add a new A4 page sheet
   const handleAddNewPage = () => {
+    haptics.heavy();
     syncPageContents();
     setPages(prev => {
       const next = [...prev, '<p><br></p>'];
@@ -895,9 +904,11 @@ export default function ExpDocStudio() {
   // 2. Direct Delete Page (NO POPUP - INSTANT DELETION)
   const deletePageDirect = useCallback((index: number) => {
     if (pages.length <= 1) {
+      haptics.error();
       toast.error('Document must contain at least one page.');
       return;
     }
+    haptics.warning();
     const nextPages = pages.filter((_, i) => i !== index);
     setPages(nextPages);
     pushHistorySnapshot(nextPages);

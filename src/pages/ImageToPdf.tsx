@@ -12,6 +12,7 @@ import ConfirmModal from '../components/ConfirmModal';
 import BuildingPdfModal from '../components/BuildingPdfModal';
 import { SortableItem } from '../components/SortableItem';
 import { toast } from 'sonner';
+import { haptics } from '../utils/haptics';
 
 interface ImageItem {
   id: string;
@@ -56,6 +57,7 @@ export default function ImageToPdf() {
   };
 
   const removeImage = (idToRemove: string) => {
+    haptics.warning();
     setImages(prev => {
       const item = prev.find(i => i.id === idToRemove);
       if (item) URL.revokeObjectURL(item.previewUrl);
@@ -64,6 +66,7 @@ export default function ImageToPdf() {
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
+    haptics.drag();
     const { active, over } = event;
     if (over && active.id !== over.id) {
       setImages((items) => {
@@ -108,9 +111,11 @@ export default function ImageToPdf() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      haptics.success();
       toast.success("PDF compiled successfully!");
     } catch (error) {
       console.error("PDF generation error", error);
+      haptics.error();
       toast.error("Failed to generate PDF. Please ensure all files are valid images.");
     } finally {
       setIsProcessing(false);
@@ -165,7 +170,12 @@ export default function ImageToPdf() {
                 </span>
               </div>
 
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <DndContext 
+                sensors={sensors} 
+                collisionDetection={closestCenter} 
+                onDragStart={() => haptics.drag()}
+                onDragEnd={handleDragEnd}
+              >
                 <SortableContext items={images.map(img => img.id)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 sm:gap-4 mb-6 sm:mb-8">
                     {images.map((img, index) => (
@@ -202,7 +212,10 @@ export default function ImageToPdf() {
                     ))}
                     
                     {/* Add More Tile */}
-                    <label className="aspect-[3/4] border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-indigo-500 dark:hover:border-cyan-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.04]">
+                    <label 
+                      onClick={() => haptics.selection()}
+                      className="aspect-[3/4] border-2 border-dashed border-slate-300 dark:border-white/15 hover:border-indigo-500 dark:hover:border-cyan-400 rounded-2xl flex flex-col items-center justify-center cursor-pointer transition-all hover:bg-slate-50 dark:hover:bg-white/[0.04]"
+                    >
                       <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 dark:bg-white/10 text-indigo-600 dark:text-cyan-400 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                         <Plus className="w-5 h-5" />
                       </div>
@@ -228,14 +241,20 @@ export default function ImageToPdf() {
               {/* Ultra-Responsive Mobile/Tablet Action Bar */}
               <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5 sm:gap-3">
                 <button 
-                  onClick={() => setShowClearConfirm(true)}
+                  onClick={() => {
+                    haptics.warning();
+                    setShowClearConfirm(true);
+                  }}
                   className="w-full sm:w-auto px-5 py-2.5 sm:py-3 text-slate-600 dark:text-zinc-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5"
                 >
                   <Trash2 className="w-4 h-4" />
                   Clear All
                 </button>
                 <button 
-                  onClick={() => setShowNameModal(true)}
+                  onClick={() => {
+                    haptics.heavy();
+                    setShowNameModal(true);
+                  }}
                   disabled={isProcessing}
                   className="w-full sm:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white px-7 py-3 rounded-xl font-semibold text-xs sm:text-sm transition-all disabled:opacity-50 shadow-lg shadow-indigo-500/25 active:scale-[0.98]"
                 >

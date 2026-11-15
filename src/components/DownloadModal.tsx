@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Download, X, Sparkles } from 'lucide-react';
+import { haptics } from '../utils/haptics';
 
 interface DownloadModalProps {
   isOpen: boolean;
@@ -18,8 +19,14 @@ export default function DownloadModal({ isOpen, onClose, onConfirm, defaultFileN
     }
   }, [isOpen, defaultFileName]);
 
+  const handleClose = () => {
+    haptics.light();
+    onClose();
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    haptics.medium();
     let finalName = fileName.trim() || defaultFileName;
     if (!finalName.toLowerCase().endsWith('.pdf')) {
       finalName += '.pdf';
@@ -38,7 +45,7 @@ export default function DownloadModal({ isOpen, onClose, onConfirm, defaultFileN
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }} 
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute inset-0 bg-slate-950/70 dark:bg-black/85 backdrop-blur-md"
           />
 
@@ -52,7 +59,7 @@ export default function DownloadModal({ isOpen, onClose, onConfirm, defaultFileN
           >
             {/* Top right close button */}
             <button
-              onClick={onClose}
+              onClick={handleClose}
               className="absolute top-5 right-5 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -94,7 +101,7 @@ export default function DownloadModal({ isOpen, onClose, onConfirm, defaultFileN
               <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={handleClose}
                   className="w-full sm:w-auto px-5 py-2.5 sm:py-3 text-slate-600 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors font-medium text-sm text-center"
                 >
                   Cancel

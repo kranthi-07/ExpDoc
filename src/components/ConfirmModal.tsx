@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, X } from 'lucide-react';
+import { haptics } from '../utils/haptics';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -24,6 +25,21 @@ export default function ConfirmModal({
 }: ConfirmModalProps) {
   if (!isOpen) return null;
 
+  const handleClose = () => {
+    haptics.light();
+    onClose();
+  };
+
+  const handleConfirm = () => {
+    if (isDestructive) {
+      haptics.warning();
+    } else {
+      haptics.medium();
+    }
+    onConfirm();
+    onClose();
+  };
+
   return (
     <AnimatePresence>
       <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -32,7 +48,7 @@ export default function ConfirmModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={onClose}
+          onClick={handleClose}
           className="absolute inset-0 bg-slate-950/70 dark:bg-black/85 backdrop-blur-md"
         />
 
@@ -46,7 +62,7 @@ export default function ConfirmModal({
         >
           {/* Close X */}
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute top-4 right-4 p-2 rounded-xl text-slate-400 hover:text-slate-700 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors"
           >
             <X className="w-4 h-4" />
@@ -79,17 +95,14 @@ export default function ConfirmModal({
           <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2.5">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               className="w-full sm:w-auto px-5 py-2.5 text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/5 rounded-xl transition-colors font-medium text-xs sm:text-sm text-center"
             >
               {cancelText}
             </button>
             <button
               type="button"
-              onClick={() => {
-                onConfirm();
-                onClose();
-              }}
+              onClick={handleConfirm}
               className={`w-full sm:w-auto px-6 py-2.5 rounded-xl font-semibold text-xs sm:text-sm text-white transition-all shadow-lg active:scale-95 ${
                 isDestructive
                   ? 'bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 shadow-red-500/25'

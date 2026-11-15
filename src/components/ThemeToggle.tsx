@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Moon, Sun } from 'lucide-react';
+import { haptics } from '../utils/haptics';
 
 export default function ThemeToggle() {
   const [isDark, setIsDark] = useState(false);
@@ -15,6 +16,7 @@ export default function ThemeToggle() {
   }, []);
 
   const toggleTheme = () => {
+    haptics.toggle();
     if (isDark) {
       document.documentElement.classList.remove('dark');
       localStorage.setItem('theme', 'light');

@@ -21,7 +21,9 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ThemeToggle from './ThemeToggle';
+import HapticToggle from './HapticToggle';
 import ExpDocLogo from './ExpDocLogo';
+import { haptics } from '../utils/haptics';
 import { toast } from 'sonner';
 
 export const ALL_TOOLS = [
@@ -47,15 +49,17 @@ export default function Navbar() {
 
   // Switching between Web and App OS mode
   const [viewMode, setViewMode] = useState<'web' | 'app'>(() => {
-    return (localStorage.getItem('expedit_view_mode') as 'web' | 'app') || 'app';
+    return (localStorage.getItem('expdoc_view_mode') as 'web' | 'app') || 
+           (localStorage.getItem('expedit_view_mode') as 'web' | 'app') || 'app';
   });
 
   const handleModeSwitch = (mode: 'web' | 'app') => {
     if (mode === viewMode) return;
+    haptics.toggle();
     setViewMode(mode);
-    localStorage.setItem('expedit_view_mode', mode);
+    localStorage.setItem('expdoc_view_mode', mode);
     document.documentElement.setAttribute('data-view-mode', mode);
-    window.dispatchEvent(new CustomEvent('expedit-view-mode-change', { detail: mode }));
+    window.dispatchEvent(new CustomEvent('expdoc-view-mode-change', { detail: mode }));
     toast.success(mode === 'app' ? 'Switched to App OS Mode' : 'Switched to Web Classic Mode');
   };
 
@@ -130,12 +134,16 @@ export default function Navbar() {
               </div>
             </Link>
 
-            {/* 2. Theme Mode Toggle */}
+            {/* 2. Theme Mode & Haptics Toggles */}
             <ThemeToggle />
+            <HapticToggle />
 
             {/* 3. Search Trigger Button */}
             <button
-              onClick={() => setIsSearchOpen(true)}
+              onClick={() => {
+                haptics.light();
+                setIsSearchOpen(true);
+              }}
               className="flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-xl bg-slate-100/90 dark:bg-white/5 border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-zinc-400 hover:text-indigo-600 dark:hover:text-cyan-400 text-xs font-mono transition-all active:scale-95"
               title="Search Tools & Functions (Ctrl+K)"
             >
