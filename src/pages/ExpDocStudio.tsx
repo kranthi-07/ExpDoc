@@ -908,22 +908,37 @@ export default function ExpDocStudio() {
   };
 
   // 2. Direct Delete Page (NO POPUP - INSTANT DELETION)
-  const deletePageDirect = useCallback((index: number) => {
-    if (pages.length <= 1) {
+  const deletePageDirect = useCallback((index?: number) => {
+    // Read live page contents directly from DOM to prevent losing unsaved edits
+    const currentLivePages = pageRefs.current.map((ref, idx) => ref ? ref.innerHTML : (pages[idx] || '<p><br></p>'));
+
+    if (currentLivePages.length <= 1) {
       haptics.error();
       toast.error('Document must contain at least one page.');
       return;
     }
+
+    const targetIdx = index !== undefined ? index : selectedPageIndex;
+    if (targetIdx < 0 || targetIdx >= currentLivePages.length) {
+      haptics.error();
+      toast.error('Please select a valid page to delete.');
+      return;
+    }
+
     haptics.warning();
-    const nextPages = pages.filter((_, i) => i !== index);
+    const nextPages = currentLivePages.filter((_, i) => i !== targetIdx);
+
+    // Clean up pageRefs so references don't point to dangling nodes
+    pageRefs.current.splice(targetIdx, 1);
+
     setPages(nextPages);
     pushHistorySnapshot(nextPages);
 
-    const nextActive = Math.max(0, Math.min(index, nextPages.length - 1));
+    const nextActive = Math.max(0, Math.min(targetIdx, nextPages.length - 1));
     activePageRef.current = nextActive;
     setSelectedPageIndex(nextActive);
 
-    toast.success(`Page ${index + 1} deleted.`);
+    toast.success(`Page ${targetIdx + 1} deleted.`);
     setTimeout(() => {
       nextPages.forEach((content, i) => {
         if (pageRefs.current[i]) {
@@ -933,7 +948,7 @@ export default function ExpDocStudio() {
       updateMetrics();
       pageRefs.current[nextActive]?.focus();
     }, 40);
-  }, [pages, pushHistorySnapshot, updateMetrics]);
+  }, [pages, selectedPageIndex, pushHistorySnapshot, updateMetrics]);
 
   // Global & Page Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+Shift+Z, Delete key on page)
   useEffect(() => {
@@ -1722,22 +1737,47 @@ export default function ExpDocStudio() {
               <div className="flex items-center bg-indigo-50/80 dark:bg-indigo-950/40 rounded-xl p-0.5 border border-indigo-200/70 dark:border-indigo-500/30">
                 <button
                   onClick={handleAddNewPage}
-                  className="px-2.5 py-1 rounded-lg text-indigo-700 dark:text-cyan-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-bold"
+                  className="px-2 sm:px-2.5 py-1 rounded-lg text-indigo-700 dark:text-cyan-300 hover:bg-white dark:hover:bg-white/10 flex items-center gap-1 text-xs font-mono font-bold transition-all active:scale-95"
                   title="Add New A4 Page Sheet"
                 >
                   <FilePlus2 className="w-3.5 h-3.5" />
-                  <span>+ Add Page</span>
+                  <span>+ Page</span>
                 </button>
 
+                <div className="w-px h-4 bg-indigo-200 dark:bg-indigo-800 mx-0.5" />
+
+                {/* Delete Page Option (Always Visible & Functional) */}
+                <button
+                  onClick={() => deletePageDirect(selectedPageIndex)}
+                  className={`px-2 sm:px-2.5 py-1 rounded-lg flex items-center gap-1 text-xs font-mono font-bold transition-all active:scale-95 ${
+                    pages.length > 1
+                      ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40'
+                      : 'text-slate-400 dark:text-zinc-600 opacity-60'
+                  }`}
+                  title={pages.length > 1 ? `Delete Page ${selectedPageIndex + 1}` : 'Document must contain at least one page'}
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <span>Delete Page</span>
+                </button>
+
+                {/* If multiple pages, dropdown to choose specific page to delete */}
                 {pages.length > 1 && (
-                  <button
-                    onClick={() => deletePageDirect(selectedPageIndex)}
-                    className="px-2.5 py-1 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center gap-1 text-xs font-mono font-bold transition-colors"
-                    title="Delete Active Page (Selected page)"
+                  <select
+                    value=""
+                    onChange={(e) => {
+                      const idx = Number(e.target.value);
+                      if (!isNaN(idx)) deletePageDirect(idx);
+                    }}
+                    className="bg-transparent text-[11px] font-mono font-bold text-red-600 dark:text-red-400 border-l border-indigo-200 dark:border-indigo-800 pl-1 pr-0.5 py-1 focus:outline-none cursor-pointer"
+                    title="Select specific page to delete"
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
-                    <span>Delete Page</span>
-                  </button>
+                    <option value="" disabled>P.{selectedPageIndex + 1}</option>
+                    {pages.map((_, i) => (
+                      <option key={i} value={i} className="text-slate-900 bg-white">
+                        Delete P.{i + 1}
+                      </option>
+                    ))}
+                  </select>
                 )}
               </div>
 
@@ -1868,19 +1908,21 @@ export default function ExpDocStudio() {
 
                   <div className="flex items-center gap-2">
                     {/* Direct Delete Page Button (NO POPUP) */}
-                    {pages.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deletePageDirect(pageIdx);
-                        }}
-                        className="flex items-center gap-1 text-red-500 hover:text-red-700 px-2 py-0.5 rounded-md hover:bg-red-50 transition-colors text-[10px] font-mono font-bold"
-                        title="Delete this page directly (No popup)"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete Page</span>
-                      </button>
-                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deletePageDirect(pageIdx);
+                      }}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold transition-colors ${
+                        pages.length > 1
+                          ? 'text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/40 cursor-pointer'
+                          : 'text-slate-400 dark:text-zinc-600 opacity-60'
+                      }`}
+                      title={pages.length > 1 ? `Delete Page ${pageIdx + 1} directly (No popup)` : 'Document must contain at least one page'}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Delete Page</span>
+                    </button>
                   </div>
                 </div>
 
@@ -1905,9 +1947,15 @@ export default function ExpDocStudio() {
                   suppressContentEditableWarning
                   onFocus={() => {
                     activePageRef.current = pageIdx;
+                    setSelectedPageIndex(pageIdx);
+                  }}
+                  onClick={() => {
+                    activePageRef.current = pageIdx;
+                    setSelectedPageIndex(pageIdx);
                   }}
                   onInput={() => {
                     activePageRef.current = pageIdx;
+                    setSelectedPageIndex(pageIdx);
                     updateMetrics();
                   }}
                   onPaste={(e) => handlePaste(e, pageIdx)}
